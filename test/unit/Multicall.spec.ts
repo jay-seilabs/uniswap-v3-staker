@@ -73,6 +73,8 @@ describe('unit/Multicall', () => {
         pool: context.pool01,
         rewardToken: context.rewardToken.address,
         refundee: incentiveCreator.address,
+        tickLower: 0,
+        tickUpper: 0,
         ...makeTimestamps(currentTime + 100),
       },
       totalReward,
@@ -99,6 +101,8 @@ describe('unit/Multicall', () => {
       rewardToken: context.rewardToken,
       poolAddress: context.poolObj.address,
       totalReward,
+      tickLower: 0,
+      tickUpper: 0,
       ...makeTimestamps(timestamp + 100),
     }
 
@@ -135,6 +139,8 @@ describe('unit/Multicall', () => {
       refundee: actors.incentiveCreator().address,
       totalReward: BN(10000),
       poolAddress: context.pool01,
+      tickLower: 0,
+      tickUpper: 0,
     })
     await helpers.getIncentiveId(incentive0)
     const incentive1 = await helpers.createIncentiveFlow({
@@ -144,6 +150,8 @@ describe('unit/Multicall', () => {
       refundee: actors.incentiveCreator().address,
       totalReward: BN(10000),
       poolAddress: context.pool01,
+      tickLower: 0,
+      tickUpper: 0,
     })
     await helpers.getIncentiveId(incentive1)
 
@@ -185,6 +193,8 @@ describe('unit/Multicall', () => {
       rewardToken: context.rewardToken,
       poolAddress: context.poolObj.address,
       totalReward,
+      tickLower: 0,
+      tickUpper: 0,
       ...makeTimestamps(timestamp + 100),
     })
 

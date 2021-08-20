@@ -326,7 +326,12 @@ contract UniswapV3Staker is IUniswapV3Staker, Multicall {
             NFTPositionInfo.getPositionInfo(factory, nonfungiblePositionManager, tokenId);
 
         require(pool == key.pool, 'UniswapV3Staker::stakeToken: token pool is not the incentive pool');
-        require(tickLower >= key.tickLower && tickUpper <= key.tickUpper, "the specified range not in incentive pool");
+
+        // make sure that the incentive pool is one which supports range
+        if (key.tickLower != 0 && key.tickUpper != 0) {
+            require(tickLower == key.tickLower && tickUpper == key.tickUpper, "the specified range not in incentive pool");
+        }
+
         require(liquidity > 0, 'UniswapV3Staker::stakeToken: cannot stake token with 0 liquidity');
 
         deposits[tokenId].numberOfStakes++;

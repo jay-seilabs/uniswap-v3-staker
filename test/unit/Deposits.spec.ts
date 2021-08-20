@@ -51,7 +51,7 @@ describe('unit/Deposits', () => {
 
   const SAFE_TRANSFER_FROM_SIGNATURE = 'safeTransferFrom(address,address,uint256,bytes)'
   const INCENTIVE_KEY_ABI =
-    'tuple(address rewardToken, address pool, uint256 startTime, uint256 endTime, address refundee)'
+    'tuple(address rewardToken, address pool, uint256 startTime, uint256 endTime, address refundee, int24 tickLower, int24 tickUpper)'
 
   beforeEach(async () => {
     await erc20Helper.ensureBalancesAndApprovals(
@@ -105,6 +105,8 @@ describe('unit/Deposits', () => {
         poolAddress: context.poolObj.address,
         startTime,
         totalReward,
+        tickLower: BN(0),
+        tickUpper: BN(0),
       })
 
       await Time.setAndMine(startTime + 1)
@@ -154,6 +156,8 @@ describe('unit/Deposits', () => {
         poolAddress: context.poolObj.address,
         startTime: createIncentiveResult.startTime + 100,
         totalReward,
+        tickLower: BN(0),
+        tickUpper: BN(0),
       })
 
       await Time.setAndMine(createIncentiveResult2.startTime)
@@ -162,7 +166,6 @@ describe('unit/Deposits', () => {
         [`${INCENTIVE_KEY_ABI}[]`],
         [[createIncentiveResult, createIncentiveResult2].map(incentiveResultToStakeAdapter)]
       )
-
       await subject(data)
       const { deposit, incentive, stake } = await getTokenInfo(tokenId)
       expect(deposit.owner).to.eq(lpUser0.address)
@@ -249,6 +252,8 @@ describe('unit/Deposits', () => {
         rewardToken,
         totalReward,
         poolAddress: context.poolObj.address,
+        tickLower: 0,
+        tickUpper: 0,
         ...timestamps,
       })
 
@@ -281,6 +286,8 @@ describe('unit/Deposits', () => {
           startTime: timestamps.startTime,
           endTime: timestamps.endTime,
           refundee: incentiveCreator.address,
+          tickLower: 0,
+          tickUpper: 0,
         })
         await Time.set(timestamps.startTime + 10)
         const stakeBefore = await context.staker.stakes(tokenId, incentiveId)
@@ -398,6 +405,8 @@ describe('unit/Deposits', () => {
           rewardToken: context.rewardToken,
           totalReward,
           poolAddress: context.poolObj.address,
+          tickLower: 0,
+          tickUpper: 0,
           ...timestamps,
         }
         const incentive = await helpers.createIncentiveFlow(incentiveParams)

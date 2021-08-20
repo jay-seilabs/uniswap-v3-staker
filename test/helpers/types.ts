@@ -1,4 +1,4 @@
-import { BigNumber, Wallet } from 'ethers'
+import { BigNumber, BigNumberish, Wallet } from 'ethers'
 import { TestERC20 } from '../../typechain'
 import { FeeAmount } from '../shared'
 
@@ -13,6 +13,8 @@ export module HelperTypes {
       endTime?: number
       totalReward: BigNumber
       refundee?: string
+      tickLower: BigNumberish
+      tickUpper: BigNumberish
     }
     export type Result = {
       poolAddress: string
@@ -21,6 +23,8 @@ export module HelperTypes {
       startTime: number
       endTime: number
       refundee: string
+      tickLower: BigNumberish
+      tickUpper: BigNumberish
     }
 
     export type Command = CommandFunction<Args, Result>
