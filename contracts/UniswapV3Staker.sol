@@ -15,6 +15,8 @@ import '@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.s
 import '@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol';
 import '@uniswap/v3-periphery/contracts/base/Multicall.sol';
 
+import 'hardhat/console.sol';
+
 /// @title Uniswap V3 canonical staking interface
 contract UniswapV3Staker is IUniswapV3Staker, Multicall {
     /// @notice Represents a staking incentive
@@ -22,6 +24,8 @@ contract UniswapV3Staker is IUniswapV3Staker, Multicall {
         uint256 totalRewardUnclaimed;
         uint160 totalSecondsClaimedX128;
         uint96 numberOfStakes;
+        int24 tickLower;
+        int24 tickUpper;
     }
 
     /// @notice Represents the deposit of a liquidity NFT
@@ -113,6 +117,8 @@ contract UniswapV3Staker is IUniswapV3Staker, Multicall {
         bytes32 incentiveId = IncentiveId.compute(key);
 
         incentives[incentiveId].totalRewardUnclaimed += reward;
+        incentives[incentiveId].tickLower = key.tickLower;
+        incentives[incentiveId].tickUpper = key.tickUpper;
 
         TransferHelper.safeTransferFrom(address(key.rewardToken), msg.sender, address(this), reward);
 
@@ -328,8 +334,11 @@ contract UniswapV3Staker is IUniswapV3Staker, Multicall {
         require(pool == key.pool, 'UniswapV3Staker::stakeToken: token pool is not the incentive pool');
 
         // make sure that the incentive pool is one which supports range
-        if (key.tickLower != 0 && key.tickUpper != 0) {
-            require(tickLower == key.tickLower && tickUpper == key.tickUpper, "the specified range not in incentive pool");
+        if (incentives[incentiveId].tickLower != 0 || incentives[incentiveId].tickUpper != 0) {
+            require(
+                tickLower == incentives[incentiveId].tickLower && tickUpper == incentives[incentiveId].tickUpper,
+                'the specified range not in incentive pool'
+            );
         }
 
         require(liquidity > 0, 'UniswapV3Staker::stakeToken: cannot stake token with 0 liquidity');

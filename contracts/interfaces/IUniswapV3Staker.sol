@@ -52,7 +52,9 @@ interface IUniswapV3Staker is IERC721Receiver, IMulticall {
         returns (
             uint256 totalRewardUnclaimed,
             uint160 totalSecondsClaimedX128,
-            uint96 numberOfStakes
+            uint96 numberOfStakes,
+            int24 tickLower,
+            int24 tickUpper
         );
 
     /// @notice Returns information about a deposited NFT
