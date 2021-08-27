@@ -193,6 +193,70 @@ export class HelperCommands {
     }
   }
 
+  mintDepositFlow = async (params: any) => {
+    // Make sure LP has enough balance
+    const bal0 = await params.tokensToStake[0].balanceOf(params.lp.address)
+    if (bal0 < params.amountsToStake[0])
+      await params.tokensToStake[0]
+        // .connect(tokensOwner)
+        .transfer(params.lp.address, params.amountsToStake[0])
+
+    const bal1 = await params.tokensToStake[1].balanceOf(params.lp.address)
+    if (bal1 < params.amountsToStake[1])
+      await params.tokensToStake[1]
+        // .connect(tokensOwner)
+        .transfer(params.lp.address, params.amountsToStake[1])
+
+    // Make sure LP has authorized NFT to withdraw
+    await params.tokensToStake[0].connect(params.lp).approve(this.nft.address, params.amountsToStake[0])
+    await params.tokensToStake[1].connect(params.lp).approve(this.nft.address, params.amountsToStake[1])
+
+    // The LP mints their NFT
+    const tokenId = await mintPosition(this.nft.connect(params.lp), {
+      token0: params.tokensToStake[0].address,
+      token1: params.tokensToStake[1].address,
+      fee: FeeAmount.MEDIUM,
+      tickLower: params.ticks[0],
+      tickUpper: params.ticks[1],
+      recipient: params.lp.address,
+      amount0Desired: params.amountsToStake[0],
+      amount1Desired: params.amountsToStake[1],
+      amount0Min: 0,
+      amount1Min: 0,
+      deadline: (await blockTimestamp()) + 1000,
+    })
+
+    // Make sure LP has authorized staker
+    await params.tokensToStake[0].connect(params.lp).approve(this.staker.address, params.amountsToStake[0])
+    await params.tokensToStake[1].connect(params.lp).approve(this.staker.address, params.amountsToStake[1])
+
+    // The LP approves and stakes their NFT
+    await this.nft.connect(params.lp).approve(this.staker.address, tokenId)
+    await this.nft
+      .connect(params.lp)
+      ['safeTransferFrom(address,address,uint256)'](params.lp.address, this.staker.address, tokenId)
+
+    return {
+      tokenId,
+      lp: params.lp,
+      params,
+    }
+  }
+
+  stakeFlow: any = async (params: any, tokenId: string) => {
+    await this.staker
+      .connect(params.lp)
+      .stakeToken(incentiveResultToStakeAdapter(params.createIncentiveResult), tokenId)
+
+    const stakedAt = await blockTimestamp()
+
+    return {
+      tokenId,
+      stakedAt,
+      lp: params.lp,
+    }
+  }
+
   depositFlow: HelperTypes.Deposit.Command = async (params) => {
     await this.nft.connect(params.lp).approve(this.staker.address, params.tokenId)
 

@@ -579,4 +579,167 @@ describe('integration', async () => {
       ).to.be.reverted
     })
   })
+
+  describe('when there are different ranges staked and only certain ranges are incentivised', () => {
+    type TestSubject = {
+      createIncentiveResult: HelperTypes.CreateIncentive.Result
+      helpers: HelperCommands
+      context: TestContext
+    }
+    let subject: TestSubject
+
+    const totalReward = BNe18(3_000)
+    const duration = days(100)
+    const baseAmount = BNe18(2)
+
+    const scenario: Fixture<TestSubject> = async (_wallets, _provider) => {
+      const context = await uniswapFixture(_wallets, _provider)
+
+      const helpers = HelperCommands.fromTestContext(context, new ActorFixture(_wallets, _provider), _provider)
+
+      const epoch = await blockTimestamp()
+      const startTime = epoch + 1_000
+      const endTime = startTime + duration
+
+      const createIncentiveResult = await helpers.createIncentiveFlow({
+        startTime,
+        endTime,
+        rewardToken: context.rewardToken,
+        poolAddress: context.pool01,
+        totalReward,
+        tickLower: -887220,
+        tickUpper: 0,
+      })
+
+      return {
+        context,
+        helpers,
+        createIncentiveResult,
+      }
+    }
+
+    beforeEach('load fixture', async () => {
+      subject = await loadFixture(scenario)
+    })
+
+    it('rewards based on how long they are in range', async () => {
+      const { helpers, context, createIncentiveResult } = subject
+      type Position = {
+        lp: Wallet
+        amounts: [BigNumber, BigNumber]
+        ticks: [number, number]
+      }
+
+      let midpoint = await getCurrentTick(context.poolObj.connect(actors.lpUser0()))
+
+      const positions: Array<Position> = [
+        // lpUser0 stakes 2e18 from min-0
+        {
+          lp: actors.lpUser0(),
+          amounts: [baseAmount, baseAmount],
+          ticks: [getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]), midpoint],
+        },
+        // lpUser1 stakes 4e18 from 0-max
+        {
+          lp: actors.lpUser1(),
+          amounts: [baseAmount.mul(2), baseAmount.mul(2)],
+          ticks: [midpoint, getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM])],
+        },
+        // lpUser2 stakes 8e18 from 0-max
+        {
+          lp: actors.lpUser2(),
+          amounts: [baseAmount.mul(4), baseAmount.mul(4)],
+          ticks: [midpoint, getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM])],
+        },
+      ]
+
+      const tokensToStake: [TestERC20, TestERC20] = [context.tokens[0], context.tokens[1]]
+
+      Time.set(createIncentiveResult.startTime + 1)
+
+      const stakes = positions.map((p) =>
+        helpers.mintDepositFlow({
+          lp: p.lp,
+          tokensToStake,
+          ticks: p.ticks,
+          amountsToStake: p.amounts,
+          createIncentiveResult,
+        })
+      )
+
+      let { params, tokenId } = await stakes[0]
+      await helpers.stakeFlow(params, tokenId)
+
+      let { params: params1, tokenId: tokenId1 } = await stakes[1]
+      expect(helpers.stakeFlow(params1, tokenId1)).to.be.revertedWith('the specified range not in incentive pool')
+
+      let { params: params2, tokenId: tokenId2 } = await stakes[2]
+      expect(helpers.stakeFlow(params2, tokenId2)).to.be.revertedWith('the specified range not in incentive pool')
+      // for (let [index, s] of stakes.entries()) {
+      //   const { params, tokenId } = await s
+      //   if (index > 0) {
+      //     try {
+      //       await helpers.stakeToken(params, tokenId)
+      //     } catch (error) {
+      //       console.log('error expected and caught')
+      //     }
+      //   } else {
+      //     await helpers.stakeToken(params, tokenId)
+      //   }
+      // }
+
+      // const trader = actors.traderUser0()
+
+      // await helpers.makeTickGoFlow({
+      //   trader,
+      //   direction: 'up',
+      //   desiredValue: 0 + 10,
+      // })
+
+      // // Go halfway through
+      // await Time.set(createIncentiveResult.startTime + duration / 2)
+
+      // await helpers.makeTickGoFlow({
+      //   trader,
+      //   direction: 'down',
+      //   desiredValue: midpoint - 10,
+      // })
+
+      // await Time.set(createIncentiveResult.endTime + 1)
+
+      // /* lp0 provided all the liquidity for the first half of the duration. */
+      // const { balance: lp0Balance } = await helpers.unstakeCollectBurnFlow({
+      //   lp: stakes[0].lp,
+      //   tokenId: stakes[0].tokenId,
+      //   createIncentiveResult,
+      // })
+
+      // expect(lp0Balance).to.eq(BN('1499999131944544913825'))
+
+      // /* lp{1,2} provided liquidity for the first half of the duration.
+      // lp2 provided twice as much liquidity as lp1. */
+      // const { balance: lp1Balance } = await helpers.unstakeCollectBurnFlow({
+      //   lp: stakes[1].lp,
+      //   tokenId: stakes[1].tokenId,
+      //   createIncentiveResult,
+      // })
+
+      // const { balance: lp2Balance } = await helpers.unstakeCollectBurnFlow({
+      //   lp: stakes[2].lp,
+      //   tokenId: stakes[2].tokenId,
+      //   createIncentiveResult,
+      // })
+
+      // expect(lp1Balance).to.eq(BN('499996238431987566881'))
+      // expect(lp2Balance).to.eq(BN('999990162082783775671'))
+
+      // await expect(
+      //   helpers.unstakeCollectBurnFlow({
+      //     lp: stakes[2].lp,
+      //     tokenId: stakes[2].tokenId,
+      //     createIncentiveResult,
+      //   })
+      // ).to.be.reverted
+    })
+  })
 })
